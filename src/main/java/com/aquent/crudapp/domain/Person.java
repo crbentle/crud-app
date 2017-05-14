@@ -37,6 +37,9 @@ public class Person {
     @NotNull
     @Size(min = 5, max = 5, message = "Zip code is required with length 5")
     private String zipCode;
+    
+    private Integer clientId;
+    private String companyName;
 
     public Integer getPersonId() {
         return personId;
@@ -101,4 +104,47 @@ public class Person {
     public void setZipCode(String zipCode) {
         this.zipCode = zipCode;
     }
+
+	/**
+	 * Gets the clientId
+	 * @return the clientId
+	 */
+	public Integer getClientId() {
+		return clientId;
+	}
+
+	/**
+	 * Sets the clientId
+	 * @param clientId the clientId to set
+	 */
+	public void setClientId( Integer clientId ) {
+		this.clientId = clientId;
+	}
+
+	/**
+	 * Gets the companyName
+	 * @return the companyName
+	 */
+	public String getCompanyName() {
+		return companyName;
+	}
+
+	/**
+	 * Sets the companyName
+	 * @param companyName the companyName to set
+	 */
+	public void setCompanyName( String companyName ) {
+		this.companyName = companyName;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "Person [personId=" + personId + ", firstName=" + firstName + ", lastName="
+				+ lastName + ", emailAddress=" + emailAddress + ", streetAddress=" + streetAddress
+				+ ", city=" + city + ", state=" + state + ", zipCode=" + zipCode + ", clientId="
+				+ clientId + ", companyName=" + companyName + "]";
+	}
 }

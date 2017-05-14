@@ -38,6 +38,12 @@ public class DefaultPersonService implements PersonService {
 
     @Override
     @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+    public List<Person> listUnAssociated(Integer clientId) {
+    	return personDao.listUnAssociated( clientId );
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
     public Person readPerson(Integer id) {
         return personDao.readPerson(id);
     }
@@ -52,6 +58,28 @@ public class DefaultPersonService implements PersonService {
     @Transactional(propagation = Propagation.SUPPORTS, readOnly = false)
     public void updatePerson(Person person) {
         personDao.updatePerson(person);
+    }
+
+    @Override
+    public String changeAssociation( Integer personId, Integer clientId, String action ) {
+    	String result = "success";
+    	if( action == null ) {
+    		result = "Action cannot be empty.";
+    	} else {
+    		switch ( action.trim() ) {
+			case "add":
+				personDao.addAssociation( personId, clientId );
+				break;
+			case "delete":
+				personDao.deleteAssociation( personId, clientId );
+				break;
+			default:
+				result = "Invalid action. " + action;
+				break;
+			}
+    	}
+    	
+    	return result;
     }
 
     @Override

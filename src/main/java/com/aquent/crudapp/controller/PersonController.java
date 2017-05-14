@@ -10,9 +10,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.aquent.crudapp.domain.Person;
+import com.aquent.crudapp.service.ClientService;
 import com.aquent.crudapp.service.PersonService;
 
 /**
@@ -25,6 +27,7 @@ public class PersonController {
     public static final String COMMAND_DELETE = "Delete";
 
     @Inject private PersonService personService;
+    @Inject private ClientService clientService;
 
     /**
      * Renders the listing page.
@@ -47,6 +50,7 @@ public class PersonController {
     public ModelAndView create() {
         ModelAndView mav = new ModelAndView("person/create");
         mav.addObject("person", new Person());
+        mav.addObject("clients", clientService.listClients());
         mav.addObject("errors", new ArrayList<String>());
         return mav;
     }
@@ -68,6 +72,7 @@ public class PersonController {
         } else {
             ModelAndView mav = new ModelAndView("person/create");
             mav.addObject("person", person);
+            mav.addObject("clients", clientService.listClients());
             mav.addObject("errors", errors);
             return mav;
         }
@@ -81,10 +86,16 @@ public class PersonController {
      */
     @RequestMapping(value = "edit/{personId}", method = RequestMethod.GET)
     public ModelAndView edit(@PathVariable Integer personId) {
-        ModelAndView mav = new ModelAndView("person/edit");
-        mav.addObject("person", personService.readPerson(personId));
-        mav.addObject("errors", new ArrayList<String>());
-        return mav;
+        Person person = personService.readPerson(personId);
+        if( person == null ) {
+        	return new ModelAndView("redirect:/person/list");
+        } else {
+            ModelAndView mav = new ModelAndView("person/edit");
+	        mav.addObject("person", person);
+	        mav.addObject("clients", clientService.listClients());
+	        mav.addObject("errors", new ArrayList<String>());
+	        return mav;
+        }
     }
 
     /**
@@ -104,6 +115,7 @@ public class PersonController {
         } else {
             ModelAndView mav = new ModelAndView("person/edit");
             mav.addObject("person", person);
+            mav.addObject("clients", clientService.listClients());
             mav.addObject("errors", errors);
             return mav;
         }
@@ -136,4 +148,21 @@ public class PersonController {
         }
         return "redirect:/person/list";
     }
+    
+    /**
+     * Adds or removes an association between the person and a client
+     * 
+     * @param personId the ID of the person for which to change an association
+     * @param clientId the ID of the client to be associated or removed 
+     * @param action indicates whether to add or remove an association. Valid values are "add" or "delete"
+     * @return
+     */
+    @ResponseBody
+	@RequestMapping(value = "/associate/{personId}/{clientId}/{action}")
+	public String associatePerson(@PathVariable Integer personId, @PathVariable Integer clientId, @PathVariable String action) {
+    	// Add or delete association
+    	return personService.changeAssociation( personId, clientId, action );
+	}
+    
+    
 }

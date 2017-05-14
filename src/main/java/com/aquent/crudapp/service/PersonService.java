@@ -15,6 +15,14 @@ public interface PersonService {
      * @return list of person records
      */
     List<Person> listPeople();
+    
+    /**
+     * Retrieves all of the person records not associated with the client
+     * 
+     * @param clientId the client ID
+     * @return list of person records
+     */
+    List<Person> listUnAssociated(Integer clientId);
 
     /**
      * Creates a new person record.
@@ -53,4 +61,14 @@ public interface PersonService {
      * @return list of error messages
      */
     List<String> validatePerson(Person person);
+    
+    /**
+     * Updates and existing person record to change the associated client.
+     * 
+     * @param personId the person ID
+     * @param clientId the client ID
+     * @param action indication of whether to add or delete the association
+     * @return result of the association update
+     */
+    String changeAssociation( Integer personId, Integer clientId, String action );
 }

@@ -5,8 +5,10 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -21,14 +23,18 @@ import com.aquent.crudapp.domain.Person;
  */
 public class PersonJdbcDao implements PersonDao {
 
-    private static final String SQL_LIST_PEOPLE = "SELECT * FROM person ORDER BY first_name, last_name, person_id";
-    private static final String SQL_READ_PERSON = "SELECT * FROM person WHERE person_id = :personId";
+    private static final String SQL_LIST_PEOPLE = "SELECT * FROM person left join client on (client.client_id = person.client_id) ORDER BY first_name, last_name, person_id";
+    private static final String SQL_LIST_UNASSOCIATED = "SELECT * FROM person left join client on (client.client_id = person.client_id) WHERE client_id != :clientId";
+    private static final String SQL_READ_PERSON = "SELECT * FROM person left join client on (client.client_id = person.client_id) WHERE person_id = :personId";
     private static final String SQL_DELETE_PERSON = "DELETE FROM person WHERE person_id = :personId";
-    private static final String SQL_UPDATE_PERSON = "UPDATE person SET (first_name, last_name, email_address, street_address, city, state, zip_code)"
-                                                  + " = (:firstName, :lastName, :emailAddress, :streetAddress, :city, :state, :zipCode)"
+    private static final String SQL_UPDATE_PERSON = "UPDATE person SET (first_name, last_name, email_address, street_address, city, state, zip_code, client_id)"
+                                                  + " = (:firstName, :lastName, :emailAddress, :streetAddress, :city, :state, :zipCode, :clientId)"
                                                   + " WHERE person_id = :personId";
-    private static final String SQL_CREATE_PERSON = "INSERT INTO person (first_name, last_name, email_address, street_address, city, state, zip_code)"
-                                                  + " VALUES (:firstName, :lastName, :emailAddress, :streetAddress, :city, :state, :zipCode)";
+    private static final String SQL_CREATE_PERSON = "INSERT INTO person (first_name, last_name, email_address, street_address, city, state, zip_code, client_id)"
+                                                  + " VALUES (:firstName, :lastName, :emailAddress, :streetAddress, :city, :state, :zipCode, :clientId)";
+    private static final String SQL_ADD_ASSOCIATION = "UPDATE person SET (client_id) = (:clientId) WHERE person_id = :personId";
+    private static final String SQL_DELETE_ASSOCIATION = "UPDATE person SET (client_id) = (0) WHERE person_id = :personId";
+    
 
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -42,10 +48,22 @@ public class PersonJdbcDao implements PersonDao {
         return namedParameterJdbcTemplate.getJdbcOperations().query(SQL_LIST_PEOPLE, new PersonRowMapper());
     }
 
+    @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+    public List<Person> listUnAssociated(Integer clientId) {
+    	List<Person> unassociated = namedParameterJdbcTemplate.getJdbcOperations().query(SQL_LIST_UNASSOCIATED, new Object[]{clientId}, new int[]{java.sql.Types.INTEGER}, new PersonRowMapper());
+    	return unassociated;
+    }
+
     @Override
     @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
     public Person readPerson(Integer personId) {
-        return namedParameterJdbcTemplate.queryForObject(SQL_READ_PERSON, Collections.singletonMap("personId", personId), new PersonRowMapper());
+    	Person person = null;
+    	try {
+    		 person = namedParameterJdbcTemplate.queryForObject(SQL_READ_PERSON, Collections.singletonMap("personId", personId), new PersonRowMapper());
+    		 return person;
+    	} catch (EmptyResultDataAccessException e) {
+    		return null;
+    	}
     }
 
     @Override
@@ -68,6 +86,24 @@ public class PersonJdbcDao implements PersonDao {
         return keyHolder.getKey().intValue();
     }
 
+	/* (non-Javadoc)
+	 * @see com.aquent.crudapp.data.dao.PersonDao#addAssociation(java.lang.Integer, java.lang.Integer)
+	 */
+	@Override
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = false)
+	public void addAssociation( Integer personId, Integer clientId ) {
+		namedParameterJdbcTemplate.update(SQL_ADD_ASSOCIATION, new MapSqlParameterSource().addValue("personId", personId).addValue( "clientId", clientId )  );
+	}
+
+	/* (non-Javadoc)
+	 * @see com.aquent.crudapp.data.dao.PersonDao#deleteAssociation(java.lang.Integer, java.lang.Integer)
+	 */
+	@Override
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = false)
+	public void deleteAssociation( Integer personId, Integer clientId ) {
+		namedParameterJdbcTemplate.update(SQL_DELETE_ASSOCIATION, Collections.singletonMap("personId", personId)  );
+	}
+
     /**
      * Row mapper for person records.
      */
@@ -80,10 +116,18 @@ public class PersonJdbcDao implements PersonDao {
             person.setFirstName(rs.getString("first_name"));
             person.setLastName(rs.getString("last_name"));
             person.setEmailAddress(rs.getString("email_address"));
-            person.setStreetAddress(rs.getString("street_address"));
-            person.setCity(rs.getString("city"));
-            person.setState(rs.getString("state"));
-            person.setZipCode(rs.getString("zip_code"));
+            person.setStreetAddress(rs.getString("person.street_address"));
+            person.setCity(rs.getString("person.city"));
+            person.setState(rs.getString("person.state"));
+            person.setZipCode(rs.getString("person.zip_code"));
+            
+
+			int clientId = rs.getInt( "client_id" );
+			if( clientId > 0 ) {
+				person.setClientId( clientId );
+				person.setCompanyName( rs.getString("company_name") );
+			}
+            
             return person;
         }
     }
